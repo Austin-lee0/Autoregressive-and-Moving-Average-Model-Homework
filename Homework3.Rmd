@@ -1,0 +1,222 @@
+---
+title: "Homework3"
+author: "Austin Lee"
+date: "February 21, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+##1 Part A
+
+```{r 1partA}
+#C:\Users\Austin\Downloads\w-gs1yr.txt
+
+data <-read.table(file = 'c:\\Users\\Austin\\Downloads\\w-gs1yr.txt', header = TRUE)
+int_rate <- ts(data$rate, start = 1962, freq = 52)
+plot(int_rate)
+acf(data$rate)
+pacf(data$rate)
+
+```
+
+By looking at the PACF, we can see that there are two spikes that exist on the first and second lag, indicating that this may be an AR(2). We also see a declining trend with the ACF, which supports the AR(2) 
+
+##1 Part B
+
+```{r 1part2}
+modarma1 <- (arima(int_rate,order = c(2,0,0)))
+modarma2 <- (arima(int_rate,order = c(1,0,0)))
+modarma3 <- (arima(int_rate,order = c(1,0,1)))
+
+(modarma1)
+(modarma2)
+(modarma3)
+```
+
+It was previously discussed that AR(2) would be a good fit according to the ACF and PACF. The AR(2) has the best AIC, and lowest variance estimated at .03151, so we will use that model.
+
+##1 Part C
+
+
+```{r 1part3}
+
+modarma1_resids <- modarma1$residuals
+
+acf(modarma1_resids)
+pacf(modarma1_resids)
+
+```
+
+By looking at the PACF, we see that there still exists some cyclical trends within our data that our model did not capture. However, we can see that our model nearly eliminated the residuals to white noise. 
+
+##1 Part D
+
+```{r 1part4}
+library("strucchange")
+
+recursive_resids <- recresid(modarma1_resids~1)
+plot(recursive_resids, ylab= "Recursive Residuals")
+
+
+```
+
+There seems to be a structural break at index 1000. Other than that, our residuals are mostly centered at 0.
+
+##1 Part E
+
+```{r 1part5}
+
+plot(efp(modarma1_resids~1, type = "Rec-CUSUM"))
+
+```
+
+Although there was a large variance at Index 1000 for the recursive residual plot, we see that our model did not have any structural breaks. 
+
+## 1 Part F
+
+```{r 1part6}
+library(forecast)
+modarma4 <- auto.arima(int_rate)
+summary(modarma4)
+summary(modarma1)
+BIC(modarma1)
+```
+
+According to the auto.arima, it yields a better AIC and BIC. If we plotted the CUSUM of the modarma4, we would see that there would be a less noticable structural break in the plot, possibly indicating that ARIMA(1,1,2) is better than AR(2).
+
+#1 Part G 
+
+```{r 1part7}
+library(forecast)
+forecast(modarma1, h = 24)
+forecast(modarma4, h = 24)
+
+plot(forecast(modarma1, h = 24), shadecols = "oldstyle" )
+plot(forecast(modarma4, h = 24), shadecols = "oldstyle")
+
+```
+
+It appears that my model trends upwards while the R's fitted models reversts around .606. 
+
+##Problem 2
+
+```{r 2part1}
+
+dataA<-read.table(file ='C:\\Users\\Austin\\Documents\\R\\Exercise7.2.csv'
+                  , header = T, sep = ',')
+acf(dataA$Unemployed..in.thousands.)
+pacf(dataA$Unemployed..in.thousands.)
+```
+
+Based on the ACF and PACF alone, it appears that an AR(1) would be a good fit to explain the time dependence within the model. The autocorrelation coefficients decline overtime, indicating high persistence, which would be consistent with AR(1).
+
+##Problem 3
+
+```{r 3part1}
+library(forecast)
+data7.6 <- read.table(file = 'C:\\Users\\Austin\\Documents\\R\\Exercise7.6.csv',
+                      header = T, sep = ',')
+
+acf(data7.6$housing.Inflation....,na.action = na.pass)
+acf(data7.6$transportation.Inflation...., na.action = na.pass)
+pacf(data7.6$housing.Inflation....,na.action = na.pass)
+pacf(data7.6$transportation.Inflation...., na.action = na.pass)
+auto.arima(data7.6$housing.Inflation....)
+auto.arima(data7.6$transportation.Inflation....)
+```
+
+For the housing inflation, its possible that an AR(2) would be viable because there are two spikes at the PACF at 1 and 2. According to the auto.arima function, which fits the best arima model based on AIC and BIC, the housing inflation is not property modeled by just AR(2). We can see that a ARIMA(2,1,2) is a better fit. According to the auto.arima function, a MA(1) seems to be a better fit and a AR(2) does not seem viable; there aren't any statistically significant spikes at lag 2.
+
+##Problem 4
+
+```{r 4part1}
+data7.7 <- read.table(file = 'C:\\Users\\Austin\\Documents\\R\\Exercise7.7.csv',
+                      header = T, sep = ',')
+ts_food<-ts(data7.7$food.Inflation...., start = 1968, freq=1)
+ts_gas <-ts(data7.7$Gas.Inflation...., start = 1968, freq =1)
+acf(data7.7$food.Inflation...., na.action = na.pass)
+pacf(data7.7$food.Inflation...., na.action = na.pass)
+acf(data7.7$Gas.Inflation...., na.action = na.pass)
+pacf(data7.7$Gas.Inflation....,na.action = na.pass)
+#food inflation ARMA(1,1)
+#gas inflation arima(1,0,0)
+best_fit_food<-Arima(ts_food,order = c(1,0,1))
+best_fit_gas<-Arima(ts_gas, order = c(1,0,0))
+
+
+
+food_predict1 <- predict(best_fit_food, n.ahead =3)
+print(paste("Point H-1, H-2, H-3 for Food:",food_predict1[1]))
+print(paste("Forecast Error at H-1, H-2, H-3 for Food", food_predict1[2]))
+food_predict1$se[3:3]*food_predict1$se[3:3]
+uncertainty_holder = vector()
+for (i in 1:3){
+  uncertainty_holder[i]=food_predict1$se[i]*food_predict1$se[i]
+}
+print(paste("Uncertainty H-1,2 and 3 for Food", uncertainty_holder))
+gas_predict1 <- predict(best_fit_gas, n.ahead=3)
+print(paste("Point H-1, 2, and 3 for Gas:",gas_predict1[1]))
+print(paste("Forecast Error at H-1, H-2, H-3 for Gas:",gas_predict1[2]))
+uncertainty_holder1 = vector()
+for (i in 1:3){
+  uncertainty_holder1[i]=gas_predict1$se[i]*gas_predict1$se[i]
+}
+print(paste("Uncertainty H-1, 2 and 3 for Gas", uncertainty_holder1))
+
+
+```
+
+It is clear that there is far greater uncertainty for gas inflation than there is for food. This is due to the uncertainty coefficient being much larger than the uncertainty coefficient for food. 
+
+
+##Problem 5
+
+```{r 5part1}
+
+data_SPYFTSE <- read.table(file = 'C:\\Users\\Austin\\Documents\\R\\Exercise8.7.csv', 
+                           header = T, sep = ',')
+
+ts_returns_SPY <- ts(data_SPYFTSE$R_SP500_OPEN...., start = 1990+(1/252), freq = 252)
+ts_returns_FTSE <- ts(data_SPYFTSE$R_FTSE_OPEN...., start = 1990+(1/252), freq = 252)
+
+ccf(ts_returns_FTSE, ts_returns_SPY, ylab = "Cross-Correlation Function", 
+    main = "SPY and FTSE Completions CCF", na.action = na.pass)
+
+ccf( ts_returns_SPY,ts_returns_FTSE, ylab = "Cross-Correlation Function", 
+    main = "SPY and FTSE Completions CCF", na.action = na.pass)
+
+#Look at CCF()
+
+
+```
+
+The ccf function computes the sample cross correlation of SPY and FTSE returns, and identifies lags in the FTSE that might be helpful for predicting the SPY. We see that the ccf plot is skewed left, indicating that there is potentially some type of casual relationship within the first few hours of trading. 
+
+```{r 5part2}
+library(vars)
+library('tseries')
+combined_SPY_FTSE = na.remove(cbind(ts_returns_SPY,ts_returns_FTSE))
+tot_combined_SPY_FTSE<-data.frame(combined_SPY_FTSE)
+VARselect(tot_combined_SPY_FTSE)
+
+var_model <- VAR(tot_combined_SPY_FTSE, p = 3)
+```
+
+We will chose VAR(p=3)because the because BIC has the lowest value and ignore AIC because it overparameterizes the models.
+ 
+```{r 5part3}
+summary(var_model)
+```
+
+When forecasting SPY, it appears that after lag1, FTSE has statistically insignificant coefficients that render the model. On the otherhand, when forecasting FTSE returns, all of the coefficients are statistically significant, meaning that it is possible that SPY and FTSE returns are a good predicter of FTSE returns. 
+
+```{r 5part4}
+library(lmtest)
+grangertest(ts_returns_SPY~ts_returns_FTSE, order = 3)
+grangertest(ts_returns_FTSE~ts_returns_SPY, order = 3)# SPY can predict FTSE
+
+plot(irf(var_model))
+```
+
+The granger preditive test reinforces the idea that SPY returns may help predict FTSE returns. When looking at the IRF, we see the impact of returns from FTSE on SPY, we see that its insignificant. However, when we look at SPY for FTSE, we see that it has high predictive capabilities up until, the second lag. 
